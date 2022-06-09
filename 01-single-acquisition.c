@@ -29,6 +29,8 @@ main (int argc, char **argv)
 		/* Acquire a single buffer */
 		buffer = arv_camera_acquisition (camera, 0, &error);
 
+		//TODO: Fix buffer acquisition issue.
+
 		if (ARV_IS_BUFFER (buffer)) {
 			/* Display some informations about the retrieved buffer */
 			printf ("Acquired %d×%d buffer\n",
