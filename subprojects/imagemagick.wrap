@@ -1,3 +1,6 @@
 [wrap-git]
 url = https://github.com/CaNOP-CubeSat/ImageMagick.git
 revision = main
+
+[provide]
+dependency_name = ImageMagick-7.0
