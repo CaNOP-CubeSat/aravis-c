@@ -27,18 +27,22 @@ main (int argc, char **argv)
 	camera = arv_camera_new (NULL, &error);
 
 	if (ARV_IS_CAMERA (camera)) {
-		printf ("Found camera '%s'\n", arv_camera_get_model_name (camera, NULL));
+		printf ("Found camera '%s'", arv_camera_get_model_name (camera, NULL));
 
 		/* Acquire a single buffer */
 		buffer = arv_camera_acquisition (camera, 0, &error);
+		size_t dataSize;
+		guint8* bufferData = (guint8*)arv_buffer_get_data(buffer,&dataSize);
+		const char * deviceId = arv_camera_get_device_id(camera, &error);
 
 		//TODO: Fix buffer acquisition issue.
 
 		if (ARV_IS_BUFFER (buffer)) {
 			/* Display some informations about the retrieved buffer */
-			gint imgWidth = arv_buffer_get_image_width (buffer);
-			gint imgHeight = arv_buffer_get_image_height (buffer);
-			printf ("Acquired %d×%d buffer\n",
+			unsigned long imgWidth = (unsigned long)arv_buffer_get_image_width (buffer);
+			unsigned long imgHeight = (unsigned long)arv_buffer_get_image_height (buffer);
+			printf(" ID: %s\n", deviceId);
+			printf ("Acquired %lu×%lu buffer\n",
 				imgWidth, imgHeight);
 			printf("Buffer information: \n");
 			printf("Buffer status: %d\n",
@@ -47,21 +51,21 @@ main (int argc, char **argv)
 				arv_buffer_get_payload_type(buffer));
 			printf("Buffer image data format: 0x%x\n",
 				arv_buffer_get_image_pixel_format(buffer));
-			size_t dataSize;
-			guint8* bufferData = (guint8*)arv_buffer_get_data(buffer,&dataSize);
-			printf("Raw buffer data: %.*x",
-				dataSize, bufferData);
+			printf("Buffer data size: %lu bytes \n", dataSize);
+
+			//DEBUG: printf("Raw buffer data: %.*x",dataSize, bufferData);
 
 			/* Send buffer to image file */
 			//MagickConstituteImage() -> ConstituteImage() -> ImportImagePixels()-> ImportCharPixel().
 			
 			MagickWand *wand = NewMagickWand();
-			MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,buffer);
+			MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
 			MagickSetImageDepth(wand, 8);
-			//MagickSetImageColorspace(wand, Mono);
+			MagickSetImageColorspace(wand, GRAYColorspace);
 			MagickSetImageFormat(wand, "jpg");
-			MagickSetImageExtent(wand, imgWidth,imgHeight);
+			MagickSetImageExtent(wand, imgWidth, imgHeight);
 			MagickWriteImage(wand, "output.jpg");
+			printf("Saved buffer to image file... \n");
 			ClearMagickWand(wand);
 
 			/* Destroy the buffer */
