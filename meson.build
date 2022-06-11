@@ -1,8 +1,9 @@
 project('aravis-c-examples', 'c', version: '0.0.1')
 
-cc = meson.get_compiler('c')
-im_dep = dependency('ImageMagick-7.0')
-aravis_dep = dependency('aravis-0.8')
+message('=============== Meson should be run as root for this project! ===============')
+imc_dep = dependency('MagickCore', fallback : ['imagemagick-7.0', 'im_dep'])
+imw_dep = dependency('MagickWand', fallback : ['imagemagick-7.0', 'im_dep'])
+aravis_dep = dependency('aravis-0.8', fallback : ['aravis-0.8', 'aravis_dep'])
 
 examples = [
   '01-single-acquisition',
@@ -12,5 +13,5 @@ examples = [
 ]
 
 foreach e: examples
-  exe = executable (e, e + '.c', dependencies: [im_dep, aravis_dep])
+  exe = executable (e, e + '.c', dependencies: [imc_dep, imw_dep, aravis_dep])
 endforeach
