@@ -1,8 +1,8 @@
-
 project('aravis-c-examples', 'c', version: '0.0.1')
+
 cc = meson.get_compiler('c')
+im_dep = dependency('ImageMagick-7.0')
 aravis_dep = dependency('aravis-0.8')
-incdir = include_directories('include')
 
 examples = [
   '01-single-acquisition',
@@ -12,5 +12,5 @@ examples = [
 ]
 
 foreach e: examples
-  exe = executable (e, e + '.c', dependencies: [aravis_dep])
+  exe = executable (e, e + '.c', dependencies: [im_dep, aravis_dep])
 endforeach
