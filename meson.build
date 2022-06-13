@@ -10,6 +10,7 @@ examples = [
   '02-multiple-acquisition',
   '03-camera-api',
   '04-camera-features',
+  '05-BBB-HW-Capture'
 ]
 
 foreach e: examples
