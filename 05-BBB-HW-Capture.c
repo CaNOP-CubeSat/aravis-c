@@ -46,12 +46,18 @@ typedef enum {
 	ARV_CAMERA_TYPE_PROSILICA
 } ArvCameraType;
 
-int
-main (int argc, char **argv)
-{
+//Globals
+ArvBuffer *buffer;
+size_t strSize;
+//unsigned long imgWidth;
+//unsigned long imgHeight;
+
+//Functions
+void bufferToImage(ArvBuffer* frameBuffer, int imgNum);
+
+int main (int argc, char **argv){
 	ArvDevice *device;
 	ArvStream *stream;
-	ArvBuffer *buffer;
 	GOptionContext *context;
 	GError *error = NULL;
 	char memory_buffer[100000];
@@ -88,17 +94,13 @@ main (int argc, char **argv)
 		guint64 n_processed_buffers;
 		guint64 n_failures;
 		guint64 n_underruns;
-		unsigned long imgWidth;
-		unsigned long imgHeight;
 		double v_double;
 		double v_double_min;
 		double v_double_max;
 		const char *v_string;
 		gboolean v_boolean;
-		guint8* bufferData;
-		size_t dataSize;
-		size_t strSize;
-		int imgCount = 1;
+		int imgNum = 0;
+		//ArvBuffer *frame;
 
 		genicam = arv_device_get_genicam (device);
 
@@ -141,13 +143,13 @@ main (int argc, char **argv)
 
 		node = arv_gc_get_node (genicam, "Width");
 		value = arv_gc_integer_get_value (ARV_GC_INTEGER (node), NULL);
-		imgWidth = (unsigned long)value; // set image width
+		//imgWidth = (unsigned long)value; // set image width
 		maximum = arv_gc_integer_get_max (ARV_GC_INTEGER (node), NULL);
 		g_print ("image width   = %d (max:%d)\n", value, maximum);
 
 		node = arv_gc_get_node (genicam, "Height");
 		value = arv_gc_integer_get_value (ARV_GC_INTEGER (node), NULL);
-		imgHeight = (unsigned long)value; // set image height
+		//imgHeight = (unsigned long)value; // set image height
 		maximum = arv_gc_integer_get_max (ARV_GC_INTEGER (node), NULL);
 		g_print ("image height  = %d (max:%d)\n", value, maximum);
 
@@ -244,11 +246,13 @@ main (int argc, char **argv)
 			do  {
 				buffer = arv_stream_try_pop_buffer (stream);
 				if (buffer != NULL) {
+					printf("Got buffer #%d\n", buffer_count);
+					bufferToImage(buffer,imgNum);
 					arv_stream_push_buffer (stream, buffer);
 					buffer_count++;
-					printf("Got buffer #%d\n", buffer_count);
+					imgNum++;
 				}
-			} while (buffer != NULL);
+			} while (buffer != NULL && buffer_count < 20);
 
 			
 			time = g_get_real_time ();
@@ -260,46 +264,6 @@ main (int argc, char **argv)
 			}
 		
 		} while (!cancel && buffer_count < 20);
-
-		/* Convert buffer stack to images via imageMagick */
-		do {
-			if(buffer != NULL){
-				/* Get data from current buffer */
-				bufferData = (guint8*)arv_buffer_get_data(buffer,&dataSize);
-
-				/* Create file name string */
-				char fileName[strSize];
-				{
-				char imgStrPrefix[] = "output_";
-				char imgStrSuffix[] = ".jpg";
-				char imgStrBody[] = "N";
-				sprintf(imgStrBody, "%d", imgCount);
-				strSize = sizeof(imgStrPrefix);
-				strSize += sizeof(imgStrBody);
-				strSize += sizeof(imgStrSuffix);
-				strcat(fileName, imgStrPrefix);
-				strcat(fileName, imgStrBody);
-				strcat(fileName, imgStrSuffix);
-				}
-				
-				/* Write bufferData to image */
-				{
-				MagickWand *wand = NewMagickWand();
-				MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
-				MagickSetImageDepth(wand, 8);
-				MagickSetImageColorspace(wand, GRAYColorspace);
-				MagickSetImageFormat(wand, "jpg");
-				MagickSetImageExtent(wand, imgWidth, imgHeight);
-				MagickWriteImage(wand, fileName);
-				printf("Saved buffer %d to image file... \n", imgCount);
-				ClearMagickWand(wand);
-				}
-			}
-
-			/* Get next buffer off stream*/
-			buffer = arv_stream_try_pop_buffer (stream);
-
-		} while (buffer != NULL);
 
 		if (ARV_IS_GV_DEVICE (device)) {
 			arv_device_read_register (device, ARV_GVBS_STREAM_CHANNEL_0_PORT_OFFSET, &value, NULL);
@@ -328,4 +292,86 @@ main (int argc, char **argv)
 	}
 
 	return EXIT_SUCCESS;
+}
+
+void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
+
+	if(frameBuffer != NULL){
+
+		/*
+		// Create file name string
+		int imgCount = 1;
+		char fileName[2];
+		sprintf(fileName, "%d", imgCount);
+		char fileType[] = ".jpg";
+		strcat(fileName,fileType);
+
+		char imgStrPrefix[] = "output_";
+		char imgStrSuffix[] = ".jpg";
+		char imgStrBody[] = "N";
+		sprintf(imgStrBody, "%d", imgCount);
+		strSize = sizeof(imgStrPrefix);
+		strSize += sizeof(imgStrBody);
+		strSize += sizeof(imgStrSuffix);
+		strcat(fileName, imgStrPrefix);
+		strcat(fileName, imgStrBody);
+		strcat(fileName, imgStrSuffix);
+		
+		printf("File string %s\n", fileName);
+		*/
+		
+		/* Write bufferData to image */
+		guint8* bufferData;
+		size_t dataSize;
+		MagickBooleanType writeStatus;
+		MagickBooleanType stackStatus;
+		unsigned long imgWidth = (unsigned long)arv_buffer_get_image_width (frameBuffer);
+		unsigned long imgHeight = (unsigned long)arv_buffer_get_image_height (frameBuffer);
+		bufferData = (void*)arv_buffer_get_data(frameBuffer,&dataSize);
+
+		//char fileName[] = "";
+		size_t nameLen;
+		char namePrefix[] = "/home/caleb/Downloads/";
+		nameLen = strlen(namePrefix);
+		printf("%s\n",namePrefix);
+		char nameBody[] = "00";
+		sprintf(nameBody, "%d", imgNum);
+		nameLen += strlen(nameBody);
+		printf("%s\n",nameBody);
+		char nameSuffix[] = ".jpg";
+		nameLen += strlen(nameSuffix);
+		printf("%s\n",nameSuffix);
+		char fileName[nameLen + 1];
+		strcat(fileName, namePrefix);
+		strcat(fileName, nameBody);
+		strcat(fileName, nameSuffix);
+
+		printf("Final file name is: %s Length is:%d\n", fileName,nameLen);
+
+		printf("==== Buffer information ==== \n");
+		printf("Buffer status: %d\n",
+			arv_buffer_get_status(buffer));
+		printf("Buffer payload type: %d\n",
+			arv_buffer_get_payload_type(buffer));
+		printf("Buffer image data format: 0x%x\n",
+			arv_buffer_get_image_pixel_format(buffer));
+		printf("Buffer data size: %lu bytes \n", dataSize);
+		printf("Buffer WxH : %lux%lu\n",imgWidth,imgHeight);
+		printf("____________________________ \n");
+		
+		MagickWand *wand = NewMagickWand();
+		stackStatus = MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
+		stackStatus = MagickSetImageDepth(wand, 8);
+		stackStatus = MagickSetImageColorspace(wand, GRAYColorspace);
+		stackStatus = MagickSetImageFormat(wand, "jpg");
+		stackStatus = MagickSetImageExtent(wand, imgWidth, imgHeight);
+		writeStatus = MagickWriteImage(wand, fileName);
+		if (writeStatus){
+			printf("... and saved buffer %d to image file ./%s @ %lux%lu\n", imgNum,fileName,imgWidth,imgHeight);
+		} else {
+			printf("... but failed to write image %d\n", imgNum);
+			printf("... MagickWand stack status = %d\n", stackStatus);
+		}
+		ClearMagickWand(wand);
+	}
 }
