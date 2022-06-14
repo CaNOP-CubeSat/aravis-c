@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../src/arvgvspprivate.h"
-#include "../src/arvgvcpprivate.h"
+#include <arvgvcpprivate.h>
+//#include <aravis-0.8/src/arvgvcpprivate.h>
 #include <ImageMagick-7/MagickWand/MagickWand.h>
 
 static gboolean cancel = FALSE;
@@ -95,6 +95,10 @@ main (int argc, char **argv)
 		double v_double_max;
 		const char *v_string;
 		gboolean v_boolean;
+		guint8* bufferData;
+		size_t dataSize;
+		size_t strSize;
+		int imgCount = 1;
 
 		genicam = arv_device_get_genicam (device);
 
@@ -257,39 +261,44 @@ main (int argc, char **argv)
 		
 		} while (!cancel && buffer_count < 20);
 
-		//Convert buffer stack to images via imageMagick
+		/* Convert buffer stack to images via imageMagick */
 		do {
-			int imgCount = 1;
-			int strSize = 0;
-			char imgStrPrefix[] = "output_";
-			char imgStrSuffix[] = ".jpg";
-			char imgStrBody[] = "N";
-			sprintf(imgStrBody, "%d", imgCount);
-			strSize = sizeof(imgStrPrefix);
-			strSize += sizeof(imgStrBody);
-			strSize += sizeof(imgStrSuffix);
-			char fileName[strSize];
-			strcat(fileName, imgStrPrefix);
-			strcat(fileName, imgStrBody);
-			strcat(fileName, imgStrSuffix);
+			if(buffer != NULL){
+				/* Get data from current buffer */
+				bufferData = (guint8*)arv_buffer_get_data(buffer,&dataSize);
 
-
-			while(buffer != NULL){
-				buffer = arv_stream_try_pop_buffer (stream);
+				/* Create file name string */
+				char fileName[strSize];
+				{
+				char imgStrPrefix[] = "output_";
+				char imgStrSuffix[] = ".jpg";
+				char imgStrBody[] = "N";
+				sprintf(imgStrBody, "%d", imgCount);
+				strSize = sizeof(imgStrPrefix);
+				strSize += sizeof(imgStrBody);
+				strSize += sizeof(imgStrSuffix);
+				strcat(fileName, imgStrPrefix);
+				strcat(fileName, imgStrBody);
+				strcat(fileName, imgStrSuffix);
+				}
+				
+				/* Write bufferData to image */
+				{
+				MagickWand *wand = NewMagickWand();
+				MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
+				MagickSetImageDepth(wand, 8);
+				MagickSetImageColorspace(wand, GRAYColorspace);
+				MagickSetImageFormat(wand, "jpg");
+				MagickSetImageExtent(wand, imgWidth, imgHeight);
+				MagickWriteImage(wand, fileName);
+				printf("Saved buffer %d to image file... \n", imgCount);
+				ClearMagickWand(wand);
+				}
 			}
 
-			printf("Buffer image data format: 0x%x\n",
-				arv_buffer_get_image_pixel_format(buffer));
-			
-			MagickWand *wand = NewMagickWand();
-			MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,buffer);
-			MagickSetImageDepth(wand, 8);
-			MagickSetImageColorspace(wand, GRAYColorspace);
-			MagickSetImageFormat(wand, "jpg");
-			MagickSetImageExtent(wand, imgWidth, imgHeight);
-			MagickWriteImage(wand, fileName);
-			printf("Saved buffer %d to image file... \n", imgCount);
-			ClearMagickWand(wand);
+			/* Get next buffer off stream*/
+			buffer = arv_stream_try_pop_buffer (stream);
+
 		} while (buffer != NULL);
 
 		if (ARV_IS_GV_DEVICE (device)) {
@@ -308,8 +317,15 @@ main (int argc, char **argv)
 
 		g_object_unref (stream);
 		g_object_unref (device);
-	} else
+	} else {
 		g_print ("No device found\n");
+	}
 
-	return 0;
+	if (error != NULL) {
+		/* An error occurred, display the corresponding message */
+		printf ("Error: %s\n", error->message);
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
 }
