@@ -64,7 +64,7 @@ main (int argc, char **argv)
 			MagickSetImageColorspace(wand, GRAYColorspace);
 			MagickSetImageFormat(wand, "jpg");
 			MagickSetImageExtent(wand, imgWidth, imgHeight);
-			MagickWriteImage(wand, "output.jpg");
+			MagickWriteImage(wand, "/home/caleb/Downloads/output.jpg");
 			printf("Saved buffer to image file... \n");
 			ClearMagickWand(wand);
 
