@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <arvgvcpprivate.h>
-//#include <aravis-0.8/src/arvgvcpprivate.h>
 #include <ImageMagick-7/MagickWand/MagickWand.h>
 
 static gboolean cancel = FALSE;
@@ -48,14 +47,12 @@ typedef enum {
 
 //Globals
 ArvBuffer *buffer;
-size_t strSize;
-//unsigned long imgWidth;
-//unsigned long imgHeight;
 
 //Functions
 void bufferToImage(ArvBuffer* frameBuffer, int imgNum);
 
 int main (int argc, char **argv){
+	size_t strSize;
 	ArvDevice *device;
 	ArvStream *stream;
 	GOptionContext *context;
@@ -294,33 +291,9 @@ int main (int argc, char **argv){
 	return EXIT_SUCCESS;
 }
 
+/* Write bufferData to image */
 void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
-
 	if(frameBuffer != NULL){
-
-		/*
-		// Create file name string
-		int imgCount = 1;
-		char fileName[2];
-		sprintf(fileName, "%d", imgCount);
-		char fileType[] = ".jpg";
-		strcat(fileName,fileType);
-
-		char imgStrPrefix[] = "output_";
-		char imgStrSuffix[] = ".jpg";
-		char imgStrBody[] = "N";
-		sprintf(imgStrBody, "%d", imgCount);
-		strSize = sizeof(imgStrPrefix);
-		strSize += sizeof(imgStrBody);
-		strSize += sizeof(imgStrSuffix);
-		strcat(fileName, imgStrPrefix);
-		strcat(fileName, imgStrBody);
-		strcat(fileName, imgStrSuffix);
-		
-		printf("File string %s\n", fileName);
-		*/
-		
-		/* Write bufferData to image */
 		guint8* bufferData;
 		size_t dataSize;
 		MagickBooleanType writeStatus;
@@ -329,7 +302,7 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		unsigned long imgHeight = (unsigned long)arv_buffer_get_image_height (frameBuffer);
 		bufferData = (void*)arv_buffer_get_data(frameBuffer,&dataSize);
 
-		//char fileName[] = "";
+		/* Configure file names */
 		size_t nameLen;
 		char namePrefix[] = "~/CubeSat/images/";
 		nameLen = strlen(namePrefix);
@@ -350,9 +323,9 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		strcat(fileName, namePrefix);
 		strcat(fileName, nameBody);
 		strcat(fileName, nameSuffix);
-
 		printf("Final file name is: %s Length is:%zu\n", fileName, nameLen);
-
+		/* Debug information */
+		printf("Final file name is: %s Length is:%d\n", fileName,nameLen);
 		printf("==== Buffer information ==== \n");
 		printf("Buffer status: %d\n",
 			arv_buffer_get_status(buffer));
@@ -364,6 +337,7 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		printf("Buffer WxH : %lux%lu\n",imgWidth,imgHeight);
 		printf("____________________________ \n");
 		
+		/*  Write buffer to images */
 		MagickWand *wand = NewMagickWand();
 		stackStatus = MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
 		stackStatus = MagickSetImageDepth(wand, 8);
