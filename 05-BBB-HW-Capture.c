@@ -331,7 +331,7 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 
 		//char fileName[] = "";
 		size_t nameLen;
-		char namePrefix[] = "/home/caleb/Downloads/";
+		char namePrefix[] = "~/CubeSat/images/";
 		nameLen = strlen(namePrefix);
 		printf("%s\n",namePrefix);
 		char nameBody[] = "00";
@@ -342,11 +342,16 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		nameLen += strlen(nameSuffix);
 		printf("%s\n",nameSuffix);
 		char fileName[nameLen + 1];
+
+		// Zero out fileName to avoid some garbage characters
+		memset(fileName, 0, nameLen + 1);
+
+
 		strcat(fileName, namePrefix);
 		strcat(fileName, nameBody);
 		strcat(fileName, nameSuffix);
 
-		printf("Final file name is: %s Length is:%d\n", fileName,nameLen);
+		printf("Final file name is: %s Length is:%zu\n", fileName, nameLen);
 
 		printf("==== Buffer information ==== \n");
 		printf("Buffer status: %d\n",
