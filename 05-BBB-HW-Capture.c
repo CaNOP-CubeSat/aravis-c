@@ -4,6 +4,7 @@
 #include <string.h>
 #include <arvgvcpprivate.h>
 #include <ImageMagick-7/MagickWand/MagickWand.h>
+#include <errno.h>
 
 static gboolean cancel = FALSE;
 
@@ -304,7 +305,7 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 
 		/* Configure file names */
 		size_t nameLen;
-		char namePrefix[] = "~/CubeSat/images/";
+		char namePrefix[] = "/home/joeys/CubeSat/images/";
 		nameLen = strlen(namePrefix);
 		printf("%s\n",namePrefix);
 		char nameBody[] = "00";
@@ -323,9 +324,9 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		strcat(fileName, namePrefix);
 		strcat(fileName, nameBody);
 		strcat(fileName, nameSuffix);
-		printf("Final file name is: %s Length is:%zu\n", fileName, nameLen);
+
 		/* Debug information */
-		printf("Final file name is: %s Length is:%d\n", fileName,nameLen);
+		printf("Final file name is: %s Length is:%zu\n", fileName,nameLen);
 		printf("==== Buffer information ==== \n");
 		printf("Buffer status: %d\n",
 			arv_buffer_get_status(buffer));
@@ -336,7 +337,10 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		printf("Buffer data size: %lu bytes \n", dataSize);
 		printf("Buffer WxH : %lux%lu\n",imgWidth,imgHeight);
 		printf("____________________________ \n");
-		
+
+		FILE* imgFile = fopen(fileName, "wx");
+		if (imgFile != NULL)
+		{
 		/*  Write buffer to images */
 		MagickWand *wand = NewMagickWand();
 		stackStatus = MagickConstituteImage(wand,imgWidth,imgHeight,"I",CharPixel,bufferData);
@@ -352,5 +356,11 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 			printf("... MagickWand stack status = %d\n", stackStatus);
 		}
 		ClearMagickWand(wand);
+		}
+		else
+		{
+			printf("Failed to create file \"%s\"\n", fileName);
+			perror("Error message: ");
+		}
 	}
 }
