@@ -6,6 +6,9 @@
 #include <ImageMagick-7/MagickWand/MagickWand.h>
 #include <errno.h>
 
+//Set number of images to take.
+static const int images_to_take = 20;
+
 static gboolean cancel = FALSE;
 
 static void
@@ -53,7 +56,6 @@ ArvBuffer *buffer;
 void bufferToImage(ArvBuffer* frameBuffer, int imgNum);
 
 int main (int argc, char **argv){
-	size_t strSize;
 	ArvDevice *device;
 	ArvStream *stream;
 	GOptionContext *context;
@@ -101,6 +103,12 @@ int main (int argc, char **argv){
 		//ArvBuffer *frame;
 
 		genicam = arv_device_get_genicam (device);
+
+		node = arv_gc_get_node (genicam, "PixelFormat");
+		if (ARV_IS_GC_NODE (node)) {
+			v_string = arv_gc_string_get_value (ARV_GC_STRING (node), NULL);
+			g_print ("Initial Pixel Format       = %s\n", v_string);
+		}
 
 		if (arv_option_width > 0) {
 			node = arv_gc_get_node (genicam, "Width");
@@ -249,8 +257,19 @@ int main (int argc, char **argv){
 					arv_stream_push_buffer (stream, buffer);
 					buffer_count++;
 					imgNum++;
+					printf("____________________________ \n");
+					node = arv_gc_get_node (genicam, "DeviceTemperature");
+					if (ARV_IS_GC_NODE (node)) {
+						v_double = arv_gc_float_get_value (ARV_GC_FLOAT (node), NULL);
+						g_print ("Temperature       = %gC \n", v_double);
+					}
+					node = arv_gc_get_node (genicam, "CurrentSpeed");
+					if (ARV_IS_GC_NODE (node)) {
+						v_string = arv_gc_enumeration_get_string_value (ARV_GC_ENUMERATION (node), NULL);
+						g_print ("USB Speed         = %s\n", v_string);
+					}
 				}
-			} while (buffer != NULL && buffer_count < 20);
+			} while (buffer != NULL && buffer_count < images_to_take);
 
 			
 			time = g_get_real_time ();
@@ -261,7 +280,7 @@ int main (int argc, char **argv){
 				start_time = time;
 			}
 		
-		} while (!cancel && buffer_count < 20);
+		} while (!cancel && buffer_count < images_to_take);
 
 		if (ARV_IS_GV_DEVICE (device)) {
 			arv_device_read_register (device, ARV_GVBS_STREAM_CHANNEL_0_PORT_OFFSET, &value, NULL);
@@ -305,17 +324,31 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 
 		/* Configure file names */
 		size_t nameLen;
-		char namePrefix[] = "/home/joeys/CubeSat/images/";
+		char namePrefix[] = "/opt/canopy/test_images/";
 		nameLen = strlen(namePrefix);
 		printf("%s\n",namePrefix);
-		char nameBody[] = "00";
+		char *nameBody = NULL;
+		char nameBodyOne[] = "0";
+		char nameBodyTen[] = "00";
+		char nameBodyHundred[] = "000";
+		char nameBodyThousand[] = "0000";
+		if (imgNum <= 9){
+			nameBody = nameBodyOne;
+		} else if (imgNum <= 99){
+			nameBody = nameBodyTen;
+		} else if (imgNum <= 999){
+			nameBody = nameBodyHundred;
+		} else {
+			nameBody = nameBodyThousand;
+		}
+		//char nameBody[] = "000";
 		sprintf(nameBody, "%d", imgNum);
 		nameLen += strlen(nameBody);
 		printf("%s\n",nameBody);
-		char nameSuffix[] = ".jpg";
+		char nameSuffix[] = ".TIFF";
 		nameLen += strlen(nameSuffix);
 		printf("%s\n",nameSuffix);
-		char fileName[nameLen + 1];
+		char fileName[nameLen];
 
 		// Zero out fileName to avoid some garbage characters
 		memset(fileName, 0, nameLen + 1);
@@ -326,7 +359,7 @@ void bufferToImage(ArvBuffer* frameBuffer, int imgNum){
 		strcat(fileName, nameSuffix);
 
 		/* Debug information */
-		printf("Final file name is: %s Length is:%zu\n", fileName,nameLen);
+		printf("Final file name is: %s Length is:%lu\n", fileName,nameLen);
 		printf("==== Buffer information ==== \n");
 		printf("Buffer status: %d\n",
 			arv_buffer_get_status(buffer));
