@@ -1,4 +1,3 @@
-# Aravis C Example Repository
+# Aravis C Modified Examples
 
-This is a collection of sample applications showing how to use the Aravis API,
-in increasing order of complexity.
+Example 05 has basic functionality with the CaNOP payload camera.
